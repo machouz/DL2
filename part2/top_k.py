@@ -14,6 +14,8 @@ for line in file(vocabFile):
     vocab.append(line[:-1])
 
 vocab = np.array(vocab)
+
+
 wordVectors = np.loadtxt(vectorsFile)
 wordVectors = np.array(map(lambda x: normalize(x), wordVectors))
 
