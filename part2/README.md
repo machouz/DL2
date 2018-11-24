@@ -1,6 +1,8 @@
-#MLETrain 
+## K-Most similar words
 
-python ass1/hmm1/MLETrain.py data/ass1-tagger-train ass1/hmm1/q.mle ass1/hmm1/e.mle
+command line takes two arguments: the vocab text and the wordVectors
+
+python ../data/vocab.txt ../data/wordVectors.txt
 
 
 
