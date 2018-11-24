@@ -17,17 +17,14 @@ EPOCHS = 10
 class MLP(nn.Module):
     def __init__(self, vocab_size, output_layer, embedding_dim=50, window_size=5, hidden_layer=100):
         super(MLP, self).__init__()
+        self.embedding_dim = embedding_dim
+        self.window_size = window_size
         self.embeddings = nn.Embedding(vocab_size, embedding_dim)
         self.fc0 = nn.Linear(embedding_dim * window_size, hidden_layer)
         self.fc1 = nn.Linear(hidden_layer, output_layer)
 
-    def forward(self, arr):
-        lst = []
-        for x in arr:
-            x = torch.LongTensor([x])
-            embeds = self.embeddings(x).view((1, -1))
-            lst.append(embeds)
-        input = torch.cat(lst, 1)
+    def forward(self, data):
+        input = self.embeddings(data).view(-1, self.embedding_dim * self.window_size)
         out = self.fc0(input)
         out = F.tanh(out)
         out = self.fc1(out)
@@ -35,11 +32,11 @@ class MLP(nn.Module):
         return out
 
 
-def train_model(model, optimizer, train_data):
+def train_model(model, optimizer, train_data, batch_size):
     model.train()
-    for word in train_data:
-        data = word[:-1]
-        label = torch.LongTensor([word[-1]])
+    for i in xrange(0, len(train_data), batch_size):
+        data = train_data[i:i + batch_size, :-1]
+        label = train_data[i:i + batch_size, -1]
         optimizer.zero_grad()
         output = model(data)
         loss = F.cross_entropy(output, label)
@@ -57,10 +54,11 @@ if __name__ == '__main__':
     train_vecs = np.array(map(lambda (word, tag): [words_id[word], label_id[tag]], train))
 
     model = MLP(vocab_size=num_words, output_layer=len(label_id))
-    train_data = zip(train_vecs[:, 0], train_vecs[1:, 0], train_vecs[2:, 0], train_vecs[3:, 0], train_vecs[4:, 0],
-                     train_vecs[2:, 1])
+    train_data = torch.LongTensor(
+        zip(train_vecs[:, 0], train_vecs[1:, 0], train_vecs[2:, 0], train_vecs[3:, 0], train_vecs[4:, 0],
+            train_vecs[2:, 1]))
     optimizer = optim.SGD(model.parameters(), lr=LR)
 
     for epoch in range(0, EPOCHS):
         print('Epoch {}'.format(epoch))
-        train_model(model, optimizer, train_data)
+        train_model(model, optimizer, train_data, 1000)
