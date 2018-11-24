@@ -5,9 +5,6 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 import torch.nn.functional as F
-from torchvision import datasets, transforms, utils
-from torch.utils.data.sampler import SubsetRandomSampler
-import matplotlib.pyplot as plt
 
 sys.path.append(os.path.abspath(os.path.dirname(__file__) + '/' + '../..'))
 from Ass2.utils import *
@@ -52,8 +49,10 @@ def train_model(model, optimizer, train_data):
 
 if __name__ == '__main__':
     train = np.loadtxt(train_name, np.str)
-    words_id, id_words = create_id(train[:, 0])
-    label_id, id_label = create_id(train[:, 1])
+    words_id = {word:i for i, word in enumerate(set(train[:, 0]))}
+    label_id = {label:i for i, label in enumerate(set(train[:, 1]))}
+    id_label = {i:label for i, label in label_id.items()}
+
     num_words = len(words_id)
     train_vecs = np.array(map(lambda (word, tag): [words_id[word], label_id[tag]], train))
 
@@ -61,6 +60,8 @@ if __name__ == '__main__':
     train_data = zip(train_vecs[:, 0], train_vecs[1:, 0], train_vecs[2:, 0], train_vecs[3:, 0], train_vecs[4:, 0],
                      train_vecs[2:, 1])
     optimizer = optim.SGD(model.parameters(), lr=LR)
+
+
     for epoch in range(0, EPOCHS):
         print('Epoch {}'.format(epoch))
         train_model(model, optimizer, train_data)
