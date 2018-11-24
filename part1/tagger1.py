@@ -31,7 +31,7 @@ class MLP(nn.Module):
         out = self.fc0(input)
         out = F.tanh(out)
         out = self.fc1(out)
-        out = F.log_softmax(out, dim=1)
+        out = F.softmax(out, dim=1)
         return out
 
 
@@ -39,7 +39,7 @@ def train_model(model, optimizer, train_data):
     model.train()
     for word in train_data:
         data = word[:-1]
-        label = word[-1]
+        label = torch.LongTensor([word[-1]])
         optimizer.zero_grad()
         output = model(data)
         loss = F.cross_entropy(output, label)
@@ -49,9 +49,9 @@ def train_model(model, optimizer, train_data):
 
 if __name__ == '__main__':
     train = np.loadtxt(train_name, np.str)
-    words_id = {word:i for i, word in enumerate(set(train[:, 0]))}
-    label_id = {label:i for i, label in enumerate(set(train[:, 1]))}
-    id_label = {i:label for label, i in label_id.items()}
+    words_id = {word: i for i, word in enumerate(set(train[:, 0]))}
+    label_id = {label: i for i, label in enumerate(set(train[:, 1]))}
+    id_label = {i: label for label, i in label_id.items()}
 
     num_words = len(words_id)
     train_vecs = np.array(map(lambda (word, tag): [words_id[word], label_id[tag]], train))
@@ -60,7 +60,6 @@ if __name__ == '__main__':
     train_data = zip(train_vecs[:, 0], train_vecs[1:, 0], train_vecs[2:, 0], train_vecs[3:, 0], train_vecs[4:, 0],
                      train_vecs[2:, 1])
     optimizer = optim.SGD(model.parameters(), lr=LR)
-
 
     for epoch in range(0, EPOCHS):
         print('Epoch {}'.format(epoch))
