@@ -51,7 +51,7 @@ if __name__ == '__main__':
     train = np.loadtxt(train_name, np.str)
     words_id = {word:i for i, word in enumerate(set(train[:, 0]))}
     label_id = {label:i for i, label in enumerate(set(train[:, 1]))}
-    id_label = {i:label for i, label in label_id.items()}
+    id_label = {i:label for label, i in label_id.items()}
 
     num_words = len(words_id)
     train_vecs = np.array(map(lambda (word, tag): [words_id[word], label_id[tag]], train))
