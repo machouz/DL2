@@ -10,6 +10,7 @@ sys.path.append(os.path.abspath(os.path.dirname(__file__) + '/' + '../..'))
 from Ass2.utils import *
 
 train_name = sys.argv[1]  # "data/pos/train"
+dev_name = sys.argv[2]  # "data/pos/dev"
 LR = 0.1
 LR_DECAY = 0.8
 EPOCHS = 10
@@ -19,6 +20,12 @@ words, labels = load_train(train_name)
 words_id = {word: i for i, word in enumerate(list(set(words)) + ["*UNK*"])}
 label_id = {label: i for i, label in enumerate(set(labels))}
 id_label = {i: label for label, i in label_id.items()}
+
+
+def get_words_id(word, words_id=words_id):
+    if word not in words_id:
+        return words_id["*UNK*"]
+    return words_id[word]
 
 
 class MLP(nn.Module):
@@ -55,7 +62,7 @@ def test_model(model, test_file, batch_size=None):
     model.eval()
     loss = correct = count = 0
     test_words, test_labels = load_train(test_file)
-    vecs = np.array(map(lambda (word, tag): [words_id[word], label_id[tag]], zip(test_words, test_labels)))
+    vecs = np.array(map(lambda (word, tag): [get_words_id(word), label_id[tag]], zip(test_words, test_labels)))
     test_data = torch.LongTensor(
         zip(vecs[:, 0], vecs[1:, 0], vecs[2:, 0], vecs[3:, 0], vecs[4:, 0],
             vecs[2:, 1]))
@@ -78,7 +85,7 @@ def test_model(model, test_file, batch_size=None):
 
 def predict(model, fname):
     data = load_test(fname)
-    vecs = np.array(map(lambda word: words_id[word], data))
+    vecs = np.array(map(lambda word: get_words_id(word), data))
     input = torch.LongTensor(zip(vecs[:, 0], vecs[1:, 0], vecs[2:, 0], vecs[3:, 0], vecs[4:, 0]))
     output = model(input)
     pred = output.data.max(1, keepdim=True)[1]
@@ -90,7 +97,7 @@ if __name__ == '__main__':
     print('Learning rate decay {}'.format(LR_DECAY))
     print('Hidden layer {}'.format(HIDDEN_LAYER))
     num_words = len(words_id)
-    train_vecs = np.array(map(lambda (word, tag): [words_id[word], label_id[tag]], zip(words, labels)))
+    train_vecs = np.array(map(lambda (word, tag): [get_words_id(word), label_id[tag]], zip(words, labels)))
 
     model = MLP(vocab_size=num_words, output_layer=len(label_id), hidden_layer=HIDDEN_LAYER)
     train_data = torch.LongTensor(
@@ -100,7 +107,7 @@ if __name__ == '__main__':
     for epoch in range(0, EPOCHS):
         print('Epoch {}'.format(epoch))
         if epoch % 1 == 0:
-            test_model(model, train_name, BATCH_SIZE)
+            test_model(model, dev_name, BATCH_SIZE)
         train_model(model, optimizer, train_data, BATCH_SIZE)
         for g in optimizer.param_groups:
             g['lr'] = g['lr'] * LR_DECAY
