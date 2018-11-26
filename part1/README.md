@@ -1,6 +1,6 @@
-#MLETrain 
+#tagger1 
 
-python ass1/hmm1/MLETrain.py data/ass1-tagger-train ass1/hmm1/q.mle ass1/hmm1/e.mle
+python Ass2/part1/tagger1.py data/pos/train
 
 
 

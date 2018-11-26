@@ -12,9 +12,9 @@ from Ass2.utils import *
 train_name = sys.argv[1]  # "data/pos/train"
 LR = 0.01
 EPOCHS = 50
-train = np.loadtxt(train_name, np.str)
-words_id = {word: i for i, word in enumerate(list(set(train[:, 0])) + ["*UNK*"])}
-label_id = {label: i for i, label in enumerate(set(train[:, 1]))}
+words, labels = load_train(train_name)
+words_id = {word: i for i, word in enumerate(list(set(words)) + ["*UNK*"])}
+label_id = {label: i for i, label in enumerate(set(labels))}
 id_label = {i: label for label, i in label_id.items()}
 
 
@@ -51,8 +51,8 @@ def train_model(model, optimizer, train_data, batch_size):
 def test_model(model, test_file, batch_size=None):
     model.eval()
     loss = correct = count = 0
-    test = np.loadtxt(test_file, np.str)
-    vecs = np.array(map(lambda (word, tag): [words_id[word], label_id[tag]], test))
+    test_words, test_labels = load_train(test_file)
+    vecs = np.array(map(lambda (word, tag): [words_id[word], label_id[tag]], zip(test_words, test_labels)))
     test_data = torch.LongTensor(
         zip(vecs[:, 0], vecs[1:, 0], vecs[2:, 0], vecs[3:, 0], vecs[4:, 0],
             vecs[2:, 1]))
@@ -74,8 +74,8 @@ def test_model(model, test_file, batch_size=None):
 
 
 def predict(model, fname):
-    data = np.loadtxt(fname, np.str)
-    vecs = np.array(map(lambda (word, tag): [words_id[word], label_id[tag]], data))
+    data = load_test(fname, np.str)
+    vecs = np.array(map(lambda word: words_id[word], data))
     input = torch.LongTensor(zip(vecs[:, 0], vecs[1:, 0], vecs[2:, 0], vecs[3:, 0], vecs[4:, 0]))
     output = model(input)
     pred = output.data.max(1, keepdim=True)[1]
@@ -85,7 +85,7 @@ def predict(model, fname):
 if __name__ == '__main__':
 
     num_words = len(words_id)
-    train_vecs = np.array(map(lambda (word, tag): [words_id[word], label_id[tag]], train))
+    train_vecs = np.array(map(lambda (word, tag): [words_id[word], label_id[tag]], zip(words, labels)))
 
     model = MLP(vocab_size=num_words, output_layer=len(label_id))
     train_data = torch.LongTensor(
