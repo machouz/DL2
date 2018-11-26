@@ -10,8 +10,11 @@ sys.path.append(os.path.abspath(os.path.dirname(__file__) + '/' + '../..'))
 from Ass2.utils import *
 
 train_name = sys.argv[1]  # "data/pos/train"
-LR = 0.01
-EPOCHS = 50
+LR = 0.1
+LR_DECAY = 0.8
+EPOCHS = 10
+BATCH_SIZE = 10000
+HIDDEN_LAYER = 150
 words, labels = load_train(train_name)
 words_id = {word: i for i, word in enumerate(list(set(words)) + ["*UNK*"])}
 label_id = {label: i for i, label in enumerate(set(labels))}
@@ -64,7 +67,7 @@ def test_model(model, test_file, batch_size=None):
         output = model(data)
         loss += F.cross_entropy(output, labels)
         pred = output.data.max(1, keepdim=True)[1].view(-1)
-        correct += (pred == labels).cpu().sum()
+        correct += (pred == labels).cpu().sum().item()
         count += len(data)
 
     accuracy = float(correct) / count
@@ -74,7 +77,7 @@ def test_model(model, test_file, batch_size=None):
 
 
 def predict(model, fname):
-    data = load_test(fname, np.str)
+    data = load_test(fname)
     vecs = np.array(map(lambda word: words_id[word], data))
     input = torch.LongTensor(zip(vecs[:, 0], vecs[1:, 0], vecs[2:, 0], vecs[3:, 0], vecs[4:, 0]))
     output = model(input)
@@ -83,17 +86,21 @@ def predict(model, fname):
 
 
 if __name__ == '__main__':
-
+    print('Learning rate {}'.format(LR))
+    print('Learning rate decay {}'.format(LR_DECAY))
+    print('Hidden layer {}'.format(HIDDEN_LAYER))
     num_words = len(words_id)
     train_vecs = np.array(map(lambda (word, tag): [words_id[word], label_id[tag]], zip(words, labels)))
 
-    model = MLP(vocab_size=num_words, output_layer=len(label_id))
+    model = MLP(vocab_size=num_words, output_layer=len(label_id), hidden_layer=HIDDEN_LAYER)
     train_data = torch.LongTensor(
         zip(train_vecs[:, 0], train_vecs[1:, 0], train_vecs[2:, 0], train_vecs[3:, 0], train_vecs[4:, 0],
             train_vecs[2:, 1]))
-    optimizer = optim.SGD(model.parameters(), lr=LR)
+    optimizer = optim.Adam(model.parameters(), lr=LR)
     for epoch in range(0, EPOCHS):
         print('Epoch {}'.format(epoch))
-        if epoch % 10 == 0:
-            test_model(model, train_name, 10000)
-        train_model(model, optimizer, train_data, 1000)
+        if epoch % 1 == 0:
+            test_model(model, train_name, BATCH_SIZE)
+        train_model(model, optimizer, train_data, BATCH_SIZE)
+        for g in optimizer.param_groups:
+            g['lr'] = g['lr'] * LR_DECAY
