@@ -16,6 +16,7 @@ LR_DECAY = 0.8
 EPOCHS = 10
 BATCH_SIZE = 10000
 HIDDEN_LAYER = 150
+
 words, labels = load_train(train_name)
 words_id = {word: i for i, word in enumerate(list(set(words)) + ["*UNK*"])}
 label_id = {label: i for i, label in enumerate(set(labels))}
@@ -48,14 +49,17 @@ class MLP(nn.Module):
 
 def train_model(model, optimizer, train_data, batch_size):
     model.train()
+    loss_history = []
     for i in xrange(0, len(train_data), batch_size):
         data = train_data[i:i + batch_size, :-1]
         label = train_data[i:i + batch_size, -1]
         optimizer.zero_grad()
         output = model(data)
         loss = F.cross_entropy(output, label)
+        loss_history.append(loss)
         loss.backward()
         optimizer.step()
+    return loss_history
 
 
 def test_model(model, test_file, batch_size=None):
@@ -76,6 +80,30 @@ def test_model(model, test_file, batch_size=None):
         pred = output.data.max(1, keepdim=True)[1].view(-1)
         correct += (pred == labels).cpu().sum().item()
         count += len(data)
+
+    accuracy = float(correct) / count
+    print('Total loss: {:.4f}, Accuracy: {}/{} ({:.0f}%)'.format(
+        loss, correct, count, 100. * accuracy))
+    return loss, accuracy
+
+
+def test_ner_model(model, test_file):
+    model.eval()
+    loss = correct = count = 0
+    test_words, test_labels = load_train(test_file)
+    vecs = np.array(map(lambda (word, tag): [get_words_id(word), label_id[tag]], zip(test_words, test_labels)))
+    test_data = torch.LongTensor(
+        zip(vecs[:, 0], vecs[1:, 0], vecs[2:, 0], vecs[3:, 0], vecs[4:, 0],
+            vecs[2:, 1]))
+    for i in xrange(0, len(test_data), 1):
+        data = test_data[i:i + 1, :-1]
+        labels = test_data[i:i + 1, -1]
+        output = model(data)
+        loss += F.cross_entropy(output, labels)
+        pred = output.data.max(1, keepdim=True)[1].view(-1)
+        if pred.item != label_id['O'] or labels.item != label_id['O']:
+            correct += (pred == labels).cpu().sum().item()
+            count += len(data)
 
     accuracy = float(correct) / count
     print('Total loss: {:.4f}, Accuracy: {}/{} ({:.0f}%)'.format(
@@ -104,10 +132,17 @@ if __name__ == '__main__':
         zip(train_vecs[:, 0], train_vecs[1:, 0], train_vecs[2:, 0], train_vecs[3:, 0], train_vecs[4:, 0],
             train_vecs[2:, 1]))
     optimizer = optim.Adam(model.parameters(), lr=LR)
+    loss_history = []
+    accuracy_history = []
     for epoch in range(0, EPOCHS):
         print('Epoch {}'.format(epoch))
         if epoch % 1 == 0:
-            test_model(model, dev_name, BATCH_SIZE)
+            loss, accuracy = test_model(model, dev_name, BATCH_SIZE)
+            loss_history.append(loss_history)
+            accuracy_history.append(accuracy_history)
+            # test_ner_model(model, dev_name)
         train_model(model, optimizer, train_data, BATCH_SIZE)
         for g in optimizer.param_groups:
             g['lr'] = g['lr'] * LR_DECAY
+    create_graph("POS_loss", [loss_history], make_new=True)
+    create_graph("POS_accuracy", [accuracy_history],ylabel="Accuracy", make_new=True)
