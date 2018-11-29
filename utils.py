@@ -15,6 +15,7 @@ def create_graph(name, array_datas=[], array_legends=["Validation"],
     plt.legend(lines, array_legends)
     plt.ylabel(ylabel)
     plt.xlabel(xlabel)
+    plt.show()
     plt.savefig(name)
 
 
@@ -35,6 +36,7 @@ def load_train(fname):
             word, tag = splitted_data
             data.append(word)
             tags.append(tag)
+
     return data, tags
 
 
