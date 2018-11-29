@@ -11,7 +11,7 @@ from Ass2.utils import *
 
 train_name = sys.argv[1]  # "data/pos/train"
 dev_name = sys.argv[2]  # "data/pos/dev"
-LR = 0.1
+LR = 0.01
 LR_DECAY = 0.8
 EPOCHS = 10
 BATCH_SIZE = 10000
@@ -101,9 +101,9 @@ def test_ner_model(model, test_file):
         output = model(data)
         loss += F.cross_entropy(output, labels)
         pred = output.data.max(1, keepdim=True)[1].view(-1)
-        if pred.item != label_id['O'] or labels.item != label_id['O']:
+        if pred.item() != label_id['O'] or labels.item() != label_id['O']:
             correct += (pred == labels).cpu().sum().item()
-            count += len(data)
+            count += 1
 
     accuracy = float(correct) / count
     print('Total loss: {:.4f}, Accuracy: {}/{} ({:.0f}%)'.format(
@@ -138,11 +138,10 @@ if __name__ == '__main__':
         print('Epoch {}'.format(epoch))
         if epoch % 1 == 0:
             loss, accuracy = test_model(model, dev_name, BATCH_SIZE)
-            loss_history.append(loss_history)
-            accuracy_history.append(accuracy_history)
-            # test_ner_model(model, dev_name)
+            loss_history.append(loss)
+            accuracy_history.append(accuracy)
         train_model(model, optimizer, train_data, BATCH_SIZE)
         for g in optimizer.param_groups:
             g['lr'] = g['lr'] * LR_DECAY
-    create_graph("POS_loss", [loss_history], make_new=True)
-    create_graph("POS_accuracy", [accuracy_history],ylabel="Accuracy", make_new=True)
+    create_graph("NER_loss", [loss_history], make_new=True)
+    create_graph("NER_accuracy", [accuracy_history], ylabel="Accuracy", make_new=True)
