@@ -36,7 +36,10 @@ def load_train(fname):
             word, tag = splitted_data
             data.append(word)
             tags.append(tag)
-
+    data.append(begin_word)
+    tags.append(begin_tag)
+    data.append(begin_word)
+    tags.append(begin_tag)
     return data, tags
 
 
@@ -50,8 +53,10 @@ def load_test(fname):
             data.append(begin_word)
             data.append(begin_word)
         else:
-            word = splitted_data
+            word = splitted_data[0]
             data.append(word)
+    data.append(begin_word)
+    data.append(begin_word)
     return data
 
 

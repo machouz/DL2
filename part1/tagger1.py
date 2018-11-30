@@ -62,7 +62,7 @@ def train_model(model, optimizer, train_data, batch_size):
     return loss_history
 
 
-def test_model(model, test_file, batch_size=None):
+def test_model(model, test_file):
     model.eval()
     loss = correct = count = 0
     test_words, test_labels = load_train(test_file)
@@ -70,16 +70,15 @@ def test_model(model, test_file, batch_size=None):
     test_data = torch.LongTensor(
         zip(vecs[:, 0], vecs[1:, 0], vecs[2:, 0], vecs[3:, 0], vecs[4:, 0],
             vecs[2:, 1]))
-    if batch_size == None:
-        batch_size = len(test_data)
-    for i in xrange(0, len(test_data), batch_size):
-        data = test_data[i:i + batch_size, :-1]
-        labels = test_data[i:i + batch_size, -1]
+    for i in xrange(0, len(test_data), 1):
+        data = test_data[i:i + 1, :-1]
+        labels = test_data[i:i + 1, -1]
         output = model(data)
         loss += F.cross_entropy(output, labels)
         pred = output.data.max(1, keepdim=True)[1].view(-1)
-        correct += (pred == labels).cpu().sum().item()
-        count += len(data)
+        if labels.item() != label_id['STR']:
+            correct += (pred == labels).cpu().sum().item()
+            count += 1
 
     accuracy = float(correct) / count
     print('Total loss: {:.4f}, Accuracy: {}/{} ({:.0f}%)'.format(
@@ -101,7 +100,7 @@ def test_ner_model(model, test_file):
         output = model(data)
         loss += F.cross_entropy(output, labels)
         pred = output.data.max(1, keepdim=True)[1].view(-1)
-        if labels.item() != label_id['O']:
+        if labels.item() != label_id['O'] and labels.item() != label_id['STR']:
             correct += (pred == labels).cpu().sum().item()
             count += 1
 
@@ -111,12 +110,16 @@ def test_ner_model(model, test_file):
     return loss, accuracy
 
 
-def predict(model, fname):
+def predict(model, fname, output_file="test1.ner"):
     data = load_test(fname)
     vecs = np.array(map(lambda word: get_words_id(word), data))
     input = torch.LongTensor(zip(vecs[:], vecs[1:], vecs[2:], vecs[3:], vecs[4:]))
     output = model(input)
     pred = output.data.max(1, keepdim=True)[1]
+    e = []
+    for i in pred.numpy():
+        e.append(id_label[i[0]])
+    np.savetxt(output_file, e, fmt="%s")
     return pred
 
 
