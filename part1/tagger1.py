@@ -9,8 +9,8 @@ import torch.nn.functional as F
 sys.path.append(os.path.abspath(os.path.dirname(__file__) + '/' + '../..'))
 from Ass2.utils import *
 
-train_name = sys.argv[1]  # "data/pos/train"
-dev_name = sys.argv[2]  # "data/pos/dev"
+train_name = "data/ner/train"
+dev_name = "data/ner/dev"
 LR = 0.01
 LR_DECAY = 1
 EPOCHS = 10
@@ -114,7 +114,7 @@ def test_ner_model(model, test_file):
 def predict(model, fname):
     data = load_test(fname)
     vecs = np.array(map(lambda word: get_words_id(word), data))
-    input = torch.LongTensor(zip(vecs[:, 0], vecs[1:, 0], vecs[2:, 0], vecs[3:, 0], vecs[4:, 0]))
+    input = torch.LongTensor(zip(vecs[:], vecs[1:], vecs[2:], vecs[3:], vecs[4:]))
     output = model(input)
     pred = output.data.max(1, keepdim=True)[1]
     return pred

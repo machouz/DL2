@@ -50,7 +50,7 @@ def load_test(fname):
             data.append(begin_word)
             data.append(begin_word)
         else:
-            word, tag = splitted_data
+            word = splitted_data
             data.append(word)
     return data
 
