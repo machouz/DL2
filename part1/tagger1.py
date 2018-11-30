@@ -12,10 +12,10 @@ from Ass2.utils import *
 train_name = sys.argv[1]  # "data/pos/train"
 dev_name = sys.argv[2]  # "data/pos/dev"
 LR = 0.01
-LR_DECAY = 0.8
+LR_DECAY = 1
 EPOCHS = 10
-BATCH_SIZE = 10000
-HIDDEN_LAYER = 150
+BATCH_SIZE = 1000
+HIDDEN_LAYER = 75
 
 words, labels = load_train(train_name)
 words_id = {word: i for i, word in enumerate(list(set(words)) + ["*UNK*"])}
@@ -101,7 +101,7 @@ def test_ner_model(model, test_file):
         output = model(data)
         loss += F.cross_entropy(output, labels)
         pred = output.data.max(1, keepdim=True)[1].view(-1)
-        if pred.item() != label_id['O'] or labels.item() != label_id['O']:
+        if labels.item() != label_id['O']:
             correct += (pred == labels).cpu().sum().item()
             count += 1
 
