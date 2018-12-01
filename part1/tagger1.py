@@ -11,7 +11,7 @@ from Ass2.utils import *
 
 train_name = sys.argv[1]  # "data/pos/train"
 dev_name = sys.argv[2]  # "data/pos/dev"
-LR = 0.1
+LR = 0.01
 LR_DECAY = 0.8
 EPOCHS = 10
 BATCH_SIZE = 10000
@@ -62,7 +62,7 @@ def train_model(model, optimizer, train_data, batch_size):
     return loss_history
 
 
-def test_model(model, test_file, batch_size=None):
+def test_model(model, test_file):
     model.eval()
     loss = correct = count = 0
     test_words, test_labels = load_train(test_file)
@@ -70,16 +70,15 @@ def test_model(model, test_file, batch_size=None):
     test_data = torch.LongTensor(
         zip(vecs[:, 0], vecs[1:, 0], vecs[2:, 0], vecs[3:, 0], vecs[4:, 0],
             vecs[2:, 1]))
-    if batch_size == None:
-        batch_size = len(test_data)
-    for i in xrange(0, len(test_data), batch_size):
-        data = test_data[i:i + batch_size, :-1]
-        labels = test_data[i:i + batch_size, -1]
+    for i in xrange(0, len(test_data), 1):
+        data = test_data[i:i + 1, :-1]
+        labels = test_data[i:i + 1, -1]
         output = model(data)
         loss += F.cross_entropy(output, labels)
         pred = output.data.max(1, keepdim=True)[1].view(-1)
-        correct += (pred == labels).cpu().sum().item()
-        count += len(data)
+        if labels.item() != label_id['STR']:
+            correct += (pred == labels).cpu().sum().item()
+            count += 1
 
     accuracy = float(correct) / count
     print('Total loss: {:.4f}, Accuracy: {}/{} ({:.0f}%)'.format(
@@ -101,9 +100,9 @@ def test_ner_model(model, test_file):
         output = model(data)
         loss += F.cross_entropy(output, labels)
         pred = output.data.max(1, keepdim=True)[1].view(-1)
-        if pred.item != label_id['O'] or labels.item != label_id['O']:
+        if labels.item() != label_id['O'] and labels.item() != label_id['STR']:
             correct += (pred == labels).cpu().sum().item()
-            count += len(data)
+            count += 1
 
     accuracy = float(correct) / count
     print('Total loss: {:.4f}, Accuracy: {}/{} ({:.0f}%)'.format(
@@ -111,12 +110,16 @@ def test_ner_model(model, test_file):
     return loss, accuracy
 
 
-def predict(model, fname):
+def predict(model, fname, output_file="test1.ner"):
     data = load_test(fname)
     vecs = np.array(map(lambda word: get_words_id(word), data))
-    input = torch.LongTensor(zip(vecs[:, 0], vecs[1:, 0], vecs[2:, 0], vecs[3:, 0], vecs[4:, 0]))
+    input = torch.LongTensor(zip(vecs[:], vecs[1:], vecs[2:], vecs[3:], vecs[4:]))
     output = model(input)
     pred = output.data.max(1, keepdim=True)[1]
+    e = []
+    for i in pred.numpy():
+        e.append(id_label[i[0]])
+    np.savetxt(output_file, e, fmt="%s")
     return pred
 
 
@@ -137,12 +140,11 @@ if __name__ == '__main__':
     for epoch in range(0, EPOCHS):
         print('Epoch {}'.format(epoch))
         if epoch % 1 == 0:
-            loss, accuracy = test_model(model, dev_name, BATCH_SIZE)
-            loss_history.append(loss_history)
-            accuracy_history.append(accuracy_history)
-            # test_ner_model(model, dev_name)
+            loss, accuracy = test_model(model, dev_name)
+            loss_history.append(loss)
+            accuracy_history.append(accuracy)
         train_model(model, optimizer, train_data, BATCH_SIZE)
         for g in optimizer.param_groups:
             g['lr'] = g['lr'] * LR_DECAY
     create_graph("POS_loss", [loss_history], make_new=True)
-    create_graph("POS_accuracy", [accuracy_history],ylabel="Accuracy", make_new=True)
+    create_graph("POS_accuracy", [accuracy_history], ylabel="Accuracy", make_new=True)
