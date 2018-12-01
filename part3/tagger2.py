@@ -45,7 +45,7 @@ class MLP(nn.Module):
         self.embedding_dim = embedding_dim
         self.window_size = window_size
         pre_trained_vec = torch.FloatTensor(pre_trained_vec)
-        self.embeddings = nn.Embedding.from_pretrained(pre_trained_vec, freeze=False)
+        self.embeddings = nn.Embedding.from_pretrained(pre_trained_vec, freeze=True)
         self.fc0 = nn.Linear(embedding_dim * window_size, hidden_layer)
         self.fc1 = nn.Linear(hidden_layer, output_layer)
 
