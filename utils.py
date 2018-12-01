@@ -1,16 +1,25 @@
 import numpy as np
 import matplotlib.pyplot as plt
 
+
+def get_prefix(word):
+    return word[:3] + "***"
+
+
+def get_suffix(word):
+    return "***" + word[-3:]
+
+
 def create_subwords(words):
     prefix_list = []
     suffix_list = []
-    words = list(set(words))
     for word in words:
-        prefix = word[:3] + "***"
-        suffix = "***" + word[-3:]
+        prefix = get_prefix(word)
+        suffix = get_suffix(word)
         prefix_list.append(prefix)
         suffix_list.append(suffix)
     return words + list(set(prefix_list)) + list(set(suffix_list))
+
 
 def create_graph(name, array_datas=[], array_legends=["Validation"],
                  xlabel="Epoch", ylabel="Loss",
