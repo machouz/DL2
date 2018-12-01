@@ -9,8 +9,13 @@ import torch.nn.functional as F
 sys.path.append(os.path.abspath(os.path.dirname(__file__) + '/' + '../..'))
 from Ass2.utils import *
 
+USE_PRETRAINED = True if len(sys.argv) > 3 else False
+print "Using pretrained" if USE_PRETRAINED else "Not using pretrained"
 train_name = sys.argv[1]  # "data/pos/train"
 dev_name = sys.argv[2]  # "data/pos/dev"
+vocabFile = sys.argv[3] if USE_PRETRAINED else None
+vectorsFile = sys.argv[4] if USE_PRETRAINED else None
+
 LR = 0.01
 LR_DECAY = 0.8
 EPOCHS = 10
@@ -18,23 +23,37 @@ BATCH_SIZE = 10000
 HIDDEN_LAYER = 150
 
 words, labels = load_train(train_name)
-words_id = {word: i for i, word in enumerate(list(set(words)) + ["*UNK*"])}
+if USE_PRETRAINED:
+    vocab = []
+    for line in file(vocabFile):
+        vocab.append(line[:-1])
+    vocab = np.array(vocab)
+    words_id = {word: i for i, word in enumerate(vocab)}
+    wordVectors = np.loadtxt(vectorsFile)
+    wordVectors = np.array(map(lambda x: x / np.linalg.norm(x), wordVectors))
+else:
+    words_id = {word: i for i, word in enumerate(list(set(words)) + ["UUUNKKK"])}
 label_id = {label: i for i, label in enumerate(set(labels))}
 id_label = {i: label for label, i in label_id.items()}
 
 
 def get_words_id(word, words_id=words_id):
     if word not in words_id:
-        return words_id["*UNK*"]
+        return words_id["UUUNKKK"]
     return words_id[word]
 
 
 class MLP(nn.Module):
-    def __init__(self, vocab_size, output_layer, embedding_dim=50, window_size=5, hidden_layer=100):
+    def __init__(self, output_layer, vocab_size=None, pre_trained_vec=None, embedding_dim=50, window_size=5,
+                 hidden_layer=100):
         super(MLP, self).__init__()
         self.embedding_dim = embedding_dim
         self.window_size = window_size
-        self.embeddings = nn.Embedding(vocab_size, embedding_dim)
+        if USE_PRETRAINED:
+            pre_trained_vec = torch.FloatTensor(pre_trained_vec)
+            self.embeddings = nn.Embedding.from_pretrained(pre_trained_vec, freeze=False)
+        else:
+            self.embeddings = nn.Embedding(vocab_size, embedding_dim)
         self.fc0 = nn.Linear(embedding_dim * window_size, hidden_layer)
         self.fc1 = nn.Linear(hidden_layer, output_layer)
 
@@ -127,14 +146,18 @@ if __name__ == '__main__':
     print('Learning rate {}'.format(LR))
     print('Learning rate decay {}'.format(LR_DECAY))
     print('Hidden layer {}'.format(HIDDEN_LAYER))
-    num_words = len(words_id)
-    train_vecs = np.array(map(lambda (word, tag): [get_words_id(word), label_id[tag]], zip(words, labels)))
 
-    model = MLP(vocab_size=num_words, output_layer=len(label_id), hidden_layer=HIDDEN_LAYER)
+    train_vecs = np.array(map(lambda (word, tag): [get_words_id(word), label_id[tag]], zip(words, labels)))
+    if USE_PRETRAINED:
+        model = MLP(pre_trained_vec=wordVectors, output_layer=len(label_id), hidden_layer=HIDDEN_LAYER)
+    else:
+        model = MLP(vocab_size=len(words_id), output_layer=len(label_id), hidden_layer=HIDDEN_LAYER)
     train_data = torch.LongTensor(
         zip(train_vecs[:, 0], train_vecs[1:, 0], train_vecs[2:, 0], train_vecs[3:, 0], train_vecs[4:, 0],
             train_vecs[2:, 1]))
-    optimizer = optim.Adam(model.parameters(), lr=LR)
+    parameters = filter(lambda p: p.requires_grad, model.parameters())
+    optimizer = optim.Adam(parameters, lr=LR)
+
     loss_history = []
     accuracy_history = []
     for epoch in range(0, EPOCHS):
@@ -146,5 +169,5 @@ if __name__ == '__main__':
         train_model(model, optimizer, train_data, BATCH_SIZE)
         for g in optimizer.param_groups:
             g['lr'] = g['lr'] * LR_DECAY
-    create_graph("POS_loss", [loss_history], make_new=True)
-    create_graph("POS_accuracy", [accuracy_history], ylabel="Accuracy", make_new=True)
+    #create_graph("POS_loss", [loss_history], make_new=True)
+    #create_graph("POS_accuracy", [accuracy_history], ylabel="Accuracy", make_new=True)
