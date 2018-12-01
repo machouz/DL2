@@ -146,5 +146,5 @@ if __name__ == '__main__':
         train_model(model, optimizer, train_data, BATCH_SIZE)
         for g in optimizer.param_groups:
             g['lr'] = g['lr'] * LR_DECAY
-    create_graph("NER_loss", [loss_history], make_new=True)
-    create_graph("NER_accuracy", [accuracy_history], ylabel="Accuracy", make_new=True)
+    create_graph("POS_loss", [loss_history], make_new=True)
+    create_graph("POS_accuracy", [accuracy_history], ylabel="Accuracy", make_new=True)
