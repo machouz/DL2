@@ -59,7 +59,10 @@ class MLP(nn.Module):
         self.fc1 = nn.Linear(hidden_layer, output_layer)
 
     def forward(self, data):
-        input = self.embeddings(data)
+        try:
+            input = self.embeddings(data)
+        except RuntimeError:
+            print "lolo"
         out = input.sum(dim=2)
         out = out.view(-1, self.embedding_dim * self.window_size)
         out = self.fc0(out)

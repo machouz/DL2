@@ -136,10 +136,11 @@ def predict(model, fname, output_file="test1.pos"):
     vecs = np.array(map(lambda word: get_words_id(word), data))
     input = torch.LongTensor(zip(vecs[:], vecs[1:], vecs[2:], vecs[3:], vecs[4:]))
     output = model(input)
-    pred = output.data.max(1, keepdim=True)[1]
+    pred = output.data.max(1, keepdim=True)[1].numpy()
     e = []
-    for i in pred.numpy():
-        e.append(id_label[i[0]])
+    for i in range(len(pred)):
+        if data[i + 2] != "***":
+            e.append("{} {}".format(data[i + 2], id_label[pred[i][0]]))
     np.savetxt(output_file, e, fmt="%s")
     return pred
 
