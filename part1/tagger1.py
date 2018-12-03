@@ -10,16 +10,16 @@ sys.path.append(os.path.abspath(os.path.dirname(__file__) + '/' + '../..'))
 from Ass2.utils import *
 
 USE_PRETRAINED = True if len(sys.argv) > 3 else False
-print "Using pretrained" if USE_PRETRAINED else "Not using pretrained"
 train_name = sys.argv[1]  # "data/pos/train"
 dev_name = sys.argv[2]  # "data/pos/dev"
+
 vocabFile = sys.argv[3] if USE_PRETRAINED else None
 vectorsFile = sys.argv[4] if USE_PRETRAINED else None
 
 LR = 0.01
 LR_DECAY = 0.8
 EPOCHS = 10
-BATCH_SIZE = 10000
+BATCH_SIZE = 1000
 HIDDEN_LAYER = 150
 
 words, labels = load_train(train_name)
@@ -38,6 +38,8 @@ id_label = {i: label for label, i in label_id.items()}
 
 
 def get_words_id(word, words_id=words_id):
+    if USE_PRETRAINED:
+        word = word.lower()
     if word not in words_id:
         return words_id["UUUNKKK"]
     return words_id[word]
@@ -129,7 +131,7 @@ def test_ner_model(model, test_file):
     return loss, accuracy
 
 
-def predict(model, fname, output_file="test1.ner"):
+def predict(model, fname, output_file="test1.pos"):
     data = load_test(fname)
     vecs = np.array(map(lambda word: get_words_id(word), data))
     input = torch.LongTensor(zip(vecs[:], vecs[1:], vecs[2:], vecs[3:], vecs[4:]))
@@ -143,9 +145,14 @@ def predict(model, fname, output_file="test1.ner"):
 
 
 if __name__ == '__main__':
+
+    print"Using pretrained" if USE_PRETRAINED else "Not using pretrained"
+    print("Using train:  {}".format(train_name))
+    print("Using dev:  {}".format(dev_name))
     print('Learning rate {}'.format(LR))
     print('Learning rate decay {}'.format(LR_DECAY))
     print('Hidden layer {}'.format(HIDDEN_LAYER))
+    print('Batch size {}'.format(BATCH_SIZE))
 
     train_vecs = np.array(map(lambda (word, tag): [get_words_id(word), label_id[tag]], zip(words, labels)))
     if USE_PRETRAINED:
@@ -169,5 +176,5 @@ if __name__ == '__main__':
         train_model(model, optimizer, train_data, BATCH_SIZE)
         for g in optimizer.param_groups:
             g['lr'] = g['lr'] * LR_DECAY
-    #create_graph("POS_loss", [loss_history], make_new=True)
-    #create_graph("POS_accuracy", [accuracy_history], ylabel="Accuracy", make_new=True)
+    create_graph("POS_loss", [loss_history], make_new=True)
+    create_graph("POS_accuracy", [accuracy_history], ylabel="Accuracy", make_new=True)

@@ -54,13 +54,18 @@ class MLP(nn.Module):
         self.embeddings = nn.Embedding(vocab_size, embedding_dim)
         if USE_PRETRAINED:
             pre_trained_vec = torch.FloatTensor(pre_trained_vec)
-            self.embeddings.weight.data.copy_(torch.from_numpy(pre_trained_vec))
+            self.embeddings.weight.data.copy_(
+                torch.cat((pre_trained_vec, self.embeddings.weight.data[len(pre_trained_vec):])))
         self.fc0 = nn.Linear(embedding_dim * window_size, hidden_layer)
         self.fc1 = nn.Linear(hidden_layer, output_layer)
 
     def forward(self, data):
-        input = self.embeddings(data)
-        out = input.sum(dim=1).view(-1)
+        try:
+            input = self.embeddings(data)
+        except RuntimeError:
+            print "lala"
+        out = input.sum(dim=2)
+        out = out.view(-1, self.embedding_dim * self.window_size)
         out = self.fc0(out)
         out = F.tanh(out)
         out = self.fc1(out)
@@ -73,7 +78,7 @@ def train_model(model, optimizer, train_data, labels, batch_size):
     loss_history = []
     for i in xrange(0, len(train_data), batch_size):
         data = train_data[i:i + batch_size]
-        label = labels[i:i + batch_size]
+        label = torch.LongTensor(labels[i:i + batch_size])
         optimizer.zero_grad()
         output = model(data)
         loss = F.cross_entropy(output, label)
@@ -87,13 +92,15 @@ def test_model(model, test_file):
     model.eval()
     loss = correct = count = 0
     test_words, test_labels = load_train(test_file)
-    vecs = np.array(map(lambda (word, tag): [get_words_id(word), label_id[tag]], zip(test_words, test_labels)))
+    test_vecs = np.array(
+        map(lambda word: [get_words_id(word), get_words_id(get_prefix(word)), get_words_id(get_suffix(word))],
+            test_words))
+    test_label = np.array(map(lambda tag: label_id[tag], test_labels))
     test_data = torch.LongTensor(
-        zip(vecs[:, 0], vecs[1:, 0], vecs[2:, 0], vecs[3:, 0], vecs[4:, 0],
-            vecs[2:, 1]))
+        zip(test_vecs[:], test_vecs[1:], test_vecs[2:], test_vecs[3:], test_vecs[4:]))
     for i in xrange(0, len(test_data), 1):
-        data = test_data[i:i + 1, :-1]
-        labels = test_data[i:i + 1, -1]
+        data = train_data[i:i + 1]
+        labels = test_label[i:i + 1]
         output = model(data)
         loss += F.cross_entropy(output, labels)
         pred = output.data.max(1, keepdim=True)[1].view(-1)
@@ -111,13 +118,15 @@ def test_ner_model(model, test_file):
     model.eval()
     loss = correct = count = 0
     test_words, test_labels = load_train(test_file)
-    vecs = np.array(map(lambda (word, tag): [get_words_id(word), label_id[tag]], zip(test_words, test_labels)))
+    test_vecs = np.array(
+        map(lambda word: [get_words_id(word), get_words_id(get_prefix(word)), get_words_id(get_suffix(word))],
+            test_words))
+    test_label = np.array(map(lambda tag: label_id[tag], test_labels))
     test_data = torch.LongTensor(
-        zip(vecs[:, 0], vecs[1:, 0], vecs[2:, 0], vecs[3:, 0], vecs[4:, 0],
-            vecs[2:, 1]))
+        zip(test_vecs[:], test_vecs[1:], test_vecs[2:], test_vecs[3:], test_vecs[4:]))
     for i in xrange(0, len(test_data), 1):
-        data = test_data[i:i + 1, :-1]
-        labels = test_data[i:i + 1, -1]
+        data = train_data[i:i + 1]
+        labels = test_label[i:i + 1]
         output = model(data)
         loss += F.cross_entropy(output, labels)
         pred = output.data.max(1, keepdim=True)[1].view(-1)
@@ -151,7 +160,7 @@ if __name__ == '__main__':
 
     train_vecs = np.array(
         map(lambda word: [get_words_id(word), get_words_id(get_prefix(word)), get_words_id(get_suffix(word))], words))
-    train_label = np.array(map(lambda tag: label_id[tag], labels))
+    train_label = torch.LongTensor(np.array(map(lambda tag: label_id[tag], labels)))
     train_data = torch.LongTensor(
         zip(train_vecs[:], train_vecs[1:], train_vecs[2:], train_vecs[3:], train_vecs[4:]))
     if USE_PRETRAINED:
