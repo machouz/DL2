@@ -10,7 +10,6 @@ sys.path.append(os.path.abspath(os.path.dirname(__file__) + '/' + '../..'))
 from Ass2.utils import *
 
 USE_PRETRAINED = True if len(sys.argv) > 3 else False
-print "Using pretrained" if USE_PRETRAINED else "Not using pretrained"
 train_name = sys.argv[1]  # "data/pos/train"
 dev_name = sys.argv[2]  # "data/pos/dev"
 vocabFile = sys.argv[3] if USE_PRETRAINED else None
@@ -19,7 +18,7 @@ vectorsFile = sys.argv[4] if USE_PRETRAINED else None
 LR = 0.01
 LR_DECAY = 0.8
 EPOCHS = 10
-BATCH_SIZE = 1
+BATCH_SIZE = 10000
 HIDDEN_LAYER = 150
 
 words, labels = load_train(train_name)
@@ -54,16 +53,13 @@ class MLP(nn.Module):
         self.embeddings = nn.Embedding(vocab_size, embedding_dim)
         if USE_PRETRAINED:
             pre_trained_vec = torch.FloatTensor(pre_trained_vec)
-            self.embeddings.weight.data.copy_(
-                torch.cat((pre_trained_vec, self.embeddings.weight.data[len(pre_trained_vec):])))
+            emb = torch.cat((pre_trained_vec, self.embeddings.weight[len(pre_trained_vec):]))
+            self.embeddings.weight = nn.Parameter(emb)
         self.fc0 = nn.Linear(embedding_dim * window_size, hidden_layer)
         self.fc1 = nn.Linear(hidden_layer, output_layer)
 
     def forward(self, data):
-        try:
-            input = self.embeddings(data)
-        except RuntimeError:
-            print "lala"
+        input = self.embeddings(data)
         out = input.sum(dim=2)
         out = out.view(-1, self.embedding_dim * self.window_size)
         out = self.fc0(out)
@@ -92,10 +88,9 @@ def test_model(model, test_file):
     model.eval()
     loss = correct = count = 0
     test_words, test_labels = load_train(test_file)
-    test_vecs = np.array(
-        map(lambda word: [get_words_id(word), get_words_id(get_prefix(word)), get_words_id(get_suffix(word))],
-            test_words))
-    test_label = np.array(map(lambda tag: label_id[tag], test_labels))
+    test_vecs = map(lambda word: [get_words_id(word), get_words_id(get_prefix(word)), get_words_id(get_suffix(word))],
+            test_words)
+    test_label = torch.LongTensor(map(lambda tag: label_id[tag], test_labels)[2:-2])
     test_data = torch.LongTensor(
         zip(test_vecs[:], test_vecs[1:], test_vecs[2:], test_vecs[3:], test_vecs[4:]))
     for i in xrange(0, len(test_data), 1):
@@ -118,10 +113,9 @@ def test_ner_model(model, test_file):
     model.eval()
     loss = correct = count = 0
     test_words, test_labels = load_train(test_file)
-    test_vecs = np.array(
-        map(lambda word: [get_words_id(word), get_words_id(get_prefix(word)), get_words_id(get_suffix(word))],
-            test_words))
-    test_label = np.array(map(lambda tag: label_id[tag], test_labels))
+    test_vecs = map(lambda word: [get_words_id(word), get_words_id(get_prefix(word)), get_words_id(get_suffix(word))],
+                    test_words)
+    test_label = torch.LongTensor(map(lambda tag: label_id[tag], test_labels)[2:-2])
     test_data = torch.LongTensor(
         zip(test_vecs[:], test_vecs[1:], test_vecs[2:], test_vecs[3:], test_vecs[4:]))
     for i in xrange(0, len(test_data), 1):
@@ -154,13 +148,17 @@ def predict(model, fname, output_file="test1.ner"):
 
 
 if __name__ == '__main__':
+    print "Using pretrained" if USE_PRETRAINED else "Not using pretrained"
+    print("Using train:  {}".format(train_name))
+    print("Using dev:  {}".format(dev_name))
     print('Learning rate {}'.format(LR))
     print('Learning rate decay {}'.format(LR_DECAY))
     print('Hidden layer {}'.format(HIDDEN_LAYER))
+    print('Batch size {}'.format(BATCH_SIZE))
 
     train_vecs = np.array(
         map(lambda word: [get_words_id(word), get_words_id(get_prefix(word)), get_words_id(get_suffix(word))], words))
-    train_label = torch.LongTensor(np.array(map(lambda tag: label_id[tag], labels)))
+    train_label = torch.LongTensor(map(lambda tag: label_id[tag], labels)[2:-2])
     train_data = torch.LongTensor(
         zip(train_vecs[:], train_vecs[1:], train_vecs[2:], train_vecs[3:], train_vecs[4:]))
     if USE_PRETRAINED:
@@ -175,12 +173,11 @@ if __name__ == '__main__':
     accuracy_history = []
     for epoch in range(0, EPOCHS):
         print('Epoch {}'.format(epoch))
-        train_model(model, optimizer, train_data, train_label, BATCH_SIZE)
         if epoch % 1 == 0:
             loss, accuracy = test_model(model, dev_name)
             loss_history.append(loss)
             accuracy_history.append(accuracy)
-
+        train_model(model, optimizer, train_data, train_label, BATCH_SIZE)
         for g in optimizer.param_groups:
             g['lr'] = g['lr'] * LR_DECAY
     # create_graph("POS_loss", [loss_history], make_new=True)

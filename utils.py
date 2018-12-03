@@ -3,11 +3,11 @@ import matplotlib.pyplot as plt
 
 
 def get_prefix(word):
-    return word[:3] + "***"
+    return word[:3] + "_***"
 
 
 def get_suffix(word):
-    return "***" + word[-3:]
+    return "***_" + word[-3:]
 
 
 def create_subwords(words):
