@@ -2,8 +2,7 @@
 
 command line takes two arguments: the vocab text and the wordVectors
 
-python ../data/vocab.txt ../data/wordVectors.txt
-
+`python ../data/vocab.txt ../data/wordVectors.txt`
 
 
 
