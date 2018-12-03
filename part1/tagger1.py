@@ -10,11 +10,8 @@ sys.path.append(os.path.abspath(os.path.dirname(__file__) + '/' + '../..'))
 from Ass2.utils import *
 
 USE_PRETRAINED = True if len(sys.argv) > 3 else False
-print "Using pretrained" if USE_PRETRAINED else "Not using pretrained"
 train_name = sys.argv[1]  # "data/pos/train"
 dev_name = sys.argv[2]  # "data/pos/dev"
-print "Using train: " + train_name
-print "Using dev: " + dev_name
 
 vocabFile = sys.argv[3] if USE_PRETRAINED else None
 vectorsFile = sys.argv[4] if USE_PRETRAINED else None
@@ -134,7 +131,7 @@ def test_ner_model(model, test_file):
     return loss, accuracy
 
 
-def predict(model, fname, output_file="test1.ner"):
+def predict(model, fname, output_file="test1.pos"):
     data = load_test(fname)
     vecs = np.array(map(lambda word: get_words_id(word), data))
     input = torch.LongTensor(zip(vecs[:], vecs[1:], vecs[2:], vecs[3:], vecs[4:]))
@@ -148,6 +145,10 @@ def predict(model, fname, output_file="test1.ner"):
 
 
 if __name__ == '__main__':
+
+    print"Using pretrained" if USE_PRETRAINED else "Not using pretrained"
+    print("Using train:  {}".format(train_name))
+    print("Using dev:  {}".format(dev_name))
     print('Learning rate {}'.format(LR))
     print('Learning rate decay {}'.format(LR_DECAY))
     print('Hidden layer {}'.format(HIDDEN_LAYER))
